@@ -265,6 +265,67 @@ namespace Restaurant.Infrastructure.Persistence.Migrations
                     b.ToTable("ingredients", "restaurant");
                 });
 
+            modelBuilder.Entity("Restaurant.Domain.Orders.Order", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TableId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("table_id");
+
+                    b.Property<Guid>("WaiterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("waiter_id");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Subtotal", "Restaurant.Domain.Orders.Order.Subtotal#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("subtotal");
+                        });
+
+                    b.HasKey("Id")
+                        .HasName("pk_orders");
+
+                    b.HasIndex("TableId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_orders_table_id")
+                        .HasFilter("status = 'InProgress'");
+
+                    b.HasIndex("WaiterId")
+                        .HasDatabaseName("ix_orders_waiter_id");
+
+                    b.HasIndex("TableId", "Status")
+                        .HasDatabaseName("ix_orders_table_id_status");
+
+                    b.ToTable("orders", "restaurant");
+                });
+
             modelBuilder.Entity("Restaurant.Domain.Tables.Table", b =>
                 {
                     b.Property<Guid>("Id")
@@ -495,6 +556,77 @@ namespace Restaurant.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("Ingredients");
+                });
+
+            modelBuilder.Entity("Restaurant.Domain.Orders.Order", b =>
+                {
+                    b.HasOne("Restaurant.Domain.Tables.Table", null)
+                        .WithMany()
+                        .HasForeignKey("TableId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_orders_table_table_id");
+
+                    b.HasOne("Restaurant.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("WaiterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_orders_users_waiter_id");
+
+                    b.OwnsMany("Restaurant.Domain.Orders.OrderItem", "Items", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.Property<Guid>("DishId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("dish_id");
+
+                            b1.Property<string>("DishName")
+                                .IsRequired()
+                                .HasMaxLength(80)
+                                .HasColumnType("character varying(80)")
+                                .HasColumnName("dish_name");
+
+                            b1.Property<Guid>("OrderId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("order_id");
+
+                            b1.Property<int>("Quantity")
+                                .HasColumnType("integer")
+                                .HasColumnName("quantity");
+
+                            b1.Property<decimal>("UnitPrice")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("unit_price");
+
+                            b1.HasKey("Id")
+                                .HasName("pk_order_items");
+
+                            b1.HasIndex("DishId")
+                                .HasDatabaseName("ix_order_items_dish_id");
+
+                            b1.HasIndex("OrderId")
+                                .HasDatabaseName("ix_order_items_order_id");
+
+                            b1.ToTable("order_items", "restaurant");
+
+                            b1.HasOne("Restaurant.Domain.Dishes.Dish", null)
+                                .WithMany()
+                                .HasForeignKey("DishId")
+                                .OnDelete(DeleteBehavior.Restrict)
+                                .IsRequired()
+                                .HasConstraintName("fk_order_items_dishes_dish_id");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OrderId")
+                                .HasConstraintName("fk_order_items_orders_order_id");
+                        });
+
+                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }
