@@ -65,6 +65,7 @@ public class ApiFactory : WebApplicationFactory<Program>
         using var scope = host.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RestaurantDbContext>();
         db.Database.EnsureCreated();
+        Restaurant.Infrastructure.Identity.IdentitySeeder.SeedAsync(host.Services).GetAwaiter().GetResult();
         return host;
     }
 
