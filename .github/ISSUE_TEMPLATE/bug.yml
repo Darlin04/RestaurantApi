@@ -1,0 +1,21 @@
+name: Bug
+description: Reportar un error
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducir
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Comportamiento esperado
