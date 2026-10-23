@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:17
+    ports:
+      - "5432:5432"
+    volumes:
+      - restaurant-db-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: restaurant
+      POSTGRES_USER: restaurant_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U restaurant_app -d restaurant"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=db;Port=5432;Database=restaurant;Username=restaurant_app;Password=${POSTGRES_PASSWORD}
+      Jwt__Key: ${JWT_KEY}
+      Seed__AdminEmail: ${SEED_ADMIN_EMAIL}
+      Seed__AdminPassword: ${SEED_ADMIN_PASSWORD}
+
+volumes:
+  restaurant-db-data:
