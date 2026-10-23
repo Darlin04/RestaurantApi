@@ -1,0 +1,167 @@
+# Con docker compose la API escucha en 8080; con dotnet run, en 5099 (Properties/launchSettings.json).
+@baseUrl = http://localhost:8080/api/v1
+@adminEmail = admin@restaurant.local
+@adminPassword = <contraseña-de-Seed:AdminPassword>
+@waiterEmail = mesero1@restaurant.local
+@waiterPassword = <contraseña-fuerte-del-mesero>
+
+### 1. Login de Admin (guarda adminToken)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+> {%
+  client.global.set("adminToken", response.body.accessToken);
+%}
+
+### 2. Crear un Waiter
+POST {{baseUrl}}/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "email": "{{waiterEmail}}",
+  "firstName": "Ana",
+  "lastName": "Mesera",
+  "password": "{{waiterPassword}}",
+  "role": "Waiter"
+}
+
+### 3. Crear ingrediente "Arroz" (guarda arrozId)
+POST {{baseUrl}}/ingredients
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Arroz"
+}
+
+> {%
+  client.global.set("arrozId", response.body.id);
+%}
+
+### 4. Crear ingrediente "Pollo" (guarda polloId)
+POST {{baseUrl}}/ingredients
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Pollo"
+}
+
+> {%
+  client.global.set("polloId", response.body.id);
+%}
+
+### 5. Crear plato "Locrio" con los dos ingredientes (guarda dishId)
+POST {{baseUrl}}/dishes
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Locrio",
+  "price": 450.00,
+  "servings": 1,
+  "category": "MainCourse",
+  "ingredientIds": ["{{arrozId}}", "{{polloId}}"]
+}
+
+> {%
+  client.global.set("dishId", response.body.id);
+%}
+
+### 6. Crear mesa 5 (guarda tableId)
+POST {{baseUrl}}/tables
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "number": 5,
+  "capacity": 4,
+  "description": "Terraza"
+}
+
+> {%
+  client.global.set("tableId", response.body.id);
+%}
+
+### 7. Login del Waiter (guarda waiterToken)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{waiterEmail}}",
+  "password": "{{waiterPassword}}"
+}
+
+> {%
+  client.global.set("waiterToken", response.body.accessToken);
+%}
+
+### 8. Abrir orden en la mesa 5 (guarda orderId e itemId)
+POST {{baseUrl}}/orders
+Authorization: Bearer {{waiterToken}}
+Content-Type: application/json
+
+{
+  "tableId": "{{tableId}}",
+  "items": [
+    { "dishId": "{{dishId}}", "quantity": 2 }
+  ]
+}
+
+> {%
+  client.global.set("orderId", response.body.id);
+  client.global.set("itemId", response.body.items[0].id);
+%}
+
+### 8b. 422: abrir otra orden en la misma mesa mientras está en servicio
+POST {{baseUrl}}/orders
+Authorization: Bearer {{waiterToken}}
+Content-Type: application/json
+
+{
+  "tableId": "{{tableId}}",
+  "items": [
+    { "dishId": "{{dishId}}", "quantity": 1 }
+  ]
+}
+
+### 9. Agregar un plato más a la orden
+POST {{baseUrl}}/orders/{{orderId}}/items
+Authorization: Bearer {{waiterToken}}
+Content-Type: application/json
+
+{
+  "dishId": "{{dishId}}",
+  "quantity": 1
+}
+
+### 10. Quitar un item de la orden
+DELETE {{baseUrl}}/orders/{{orderId}}/items/{{itemId}}
+Authorization: Bearer {{waiterToken}}
+
+### 11. Completar la orden (la mesa pasa a Served)
+PATCH {{baseUrl}}/orders/{{orderId}}/complete
+Authorization: Bearer {{waiterToken}}
+
+### 12. Liberar la mesa (vuelve a Available)
+PATCH {{baseUrl}}/tables/{{tableId}}/release
+Authorization: Bearer {{waiterToken}}
+
+### 13. Listar órdenes de la mesa, paginadas
+GET {{baseUrl}}/orders?tableId={{tableId}}&page=1&pageSize=20
+Authorization: Bearer {{adminToken}}
+
+### 409: ingrediente duplicado (ignora mayúsculas)
+POST {{baseUrl}}/ingredients
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "ARROZ"
+}
